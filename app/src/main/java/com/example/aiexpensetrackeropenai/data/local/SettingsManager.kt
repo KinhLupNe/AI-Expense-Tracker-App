@@ -17,7 +17,7 @@ class SettingsManager(private val context: Context) {
     }
 
     val apiKeyFlow: Flow<String?> = context.dataStore.data.map { preferences ->
-        preferences[API_KEY] ?: "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"
+        preferences[API_KEY] ?: ""
     }
 
     val webhookUrlFlow: Flow<String?> = kotlinx.coroutines.flow.flowOf(

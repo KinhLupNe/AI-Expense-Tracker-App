@@ -232,6 +232,50 @@ fun MainScreen(viewModel: MainViewModel) {
                             Icon(Icons.Default.OpenInBrowser, contentDescription = "Mở Google Sheets", tint = MaterialTheme.colorScheme.primary)
                         }
                     }
+                    Spacer(modifier = Modifier.width(4.dp))
+                    IconButton(onClick = { showSettingsDialog = true }, modifier = Modifier.size(24.dp)) {
+                        Icon(Icons.Default.Settings, contentDescription = "Cài đặt", tint = Color.Gray)
+                    }
+                }
+
+                // Settings Dialog
+                if (showSettingsDialog) {
+                    var apiKeyInput by remember { mutableStateOf(apiKey ?: "") }
+                    AlertDialog(
+                        onDismissRequest = { showSettingsDialog = false },
+                        title = { Text("Cài đặt", fontWeight = FontWeight.Bold) },
+                        text = {
+                            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text("OpenAI API Key", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
+                                OutlinedTextField(
+                                    value = apiKeyInput,
+                                    onValueChange = { apiKeyInput = it },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    placeholder = { Text("sk-proj-...", color = Color.Gray) },
+                                    label = { Text("API Key") },
+                                    singleLine = true
+                                )
+                                Text(
+                                    text = "Dán API Key từ platform.openai.com vào ô trên.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color.Gray
+                                )
+                            }
+                        },
+                        confirmButton = {
+                            Button(onClick = {
+                                viewModel.saveApiKey(apiKeyInput.trim())
+                                showSettingsDialog = false
+                            }) {
+                                Text("Lưu")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = { showSettingsDialog = false }) {
+                                Text("Huỷ")
+                            }
+                        }
+                    )
                 }
                 
                 if (selectedTabIndex == 0 || selectedTabIndex == 1) {
@@ -638,7 +682,7 @@ fun AdvisorTabContent(viewModel: MainViewModel) {
 
     Column(modifier = Modifier.fillMaxSize().imePadding()) {
         LazyColumn(
-            modifier = Modifier.weight(1f).fillMaxWidth(),
+            modifier = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp),
             contentPadding = PaddingValues(bottom = 16.dp)
         ) {
             items(chatMessages) { msg ->
@@ -663,24 +707,32 @@ fun AdvisorTabContent(viewModel: MainViewModel) {
             }
         }
         
-        androidx.compose.foundation.lazy.LazyRow(
-            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            items(quickReplies) { reply ->
-                SuggestionChip(
-                    onClick = {
+            quickReplies.forEach { reply ->
+                Card(
+                    modifier = Modifier.fillMaxWidth().clickable {
                         if (!isLoading) {
                             viewModel.askAdvisor(reply)
                         }
                     },
-                    label = { Text(reply) }
-                )
+                    shape = RoundedCornerShape(12.dp),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                ) {
+                    Text(
+                        text = reply,
+                        modifier = Modifier.padding(12.dp),
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
         }
 
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             OutlinedTextField(
