@@ -672,13 +672,17 @@ fun AdvisorTabContent(viewModel: MainViewModel) {
     val isLoading by viewModel.isLoading.collectAsState()
     var inputText by remember { mutableStateOf("") }
     val focusManager = androidx.compose.ui.platform.LocalFocusManager.current
-    
+
+    data class QuickReply(val shortText: String, val fullQuestion: String)
+
     val quickReplies = listOf(
-        "Tháng này mẹ đã tiêu vào khoản nào nhiều nhất?",
-        "Mẹ có khoản chi nào bất thường trong tuần này không?",
-        "So với tháng trước thì tháng này mẹ chi tiêu thế nào?",
-        "Gợi ý cho mẹ cách tiết kiệm tiền đi!"
+        QuickReply("Khoản tiêu nhiều nhất?", "Tháng này mẹ đã tiêu vào khoản nào nhiều nhất?"),
+        QuickReply("Chi tiêu bất thường?", "Mẹ có khoản chi nào bất thường trong tuần này không?"),
+        QuickReply("So với tháng trước?", "So với tháng trước thì tháng này mẹ chi tiêu thế nào?"),
+        QuickReply("Mẹo tiết kiệm tiền?", "Gợi ý cho mẹ cách tiết kiệm tiền đi!")
     )
+
+    val hasMessages = chatMessages.isNotEmpty()
 
     Column(modifier = Modifier.fillMaxSize().imePadding()) {
         LazyColumn(
@@ -706,27 +710,57 @@ fun AdvisorTabContent(viewModel: MainViewModel) {
                 }
             }
         }
-        
-        Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            quickReplies.forEach { reply ->
-                Card(
-                    modifier = Modifier.fillMaxWidth().clickable {
-                        if (!isLoading) {
-                            viewModel.askAdvisor(reply)
-                        }
-                    },
-                    shape = RoundedCornerShape(12.dp),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                ) {
-                    Text(
-                        text = reply,
-                        modifier = Modifier.padding(12.dp),
-                        textAlign = androidx.compose.ui.text.style.TextAlign.Start,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
+
+        // Khi chưa có tin nhắn: hiển thị dạng cột dọc đầy đủ
+        if (!hasMessages) {
+            Column(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                quickReplies.forEach { reply ->
+                    Card(
+                        modifier = Modifier.fillMaxWidth().clickable {
+                            if (!isLoading) {
+                                viewModel.askAdvisor(reply.fullQuestion)
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                    ) {
+                        Text(
+                            text = reply.fullQuestion,
+                            modifier = Modifier.padding(12.dp),
+                            textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        } else {
+            // Khi đã có tin nhắn: thu gọn thành LazyRow ngang
+            androidx.compose.foundation.lazy.LazyRow(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp).padding(bottom = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(quickReplies) { reply ->
+                    Surface(
+                        modifier = Modifier.clickable {
+                            if (!isLoading) {
+                                viewModel.askAdvisor(reply.fullQuestion)
+                            }
+                        },
+                        shape = RoundedCornerShape(20.dp),
+                        color = MaterialTheme.colorScheme.secondaryContainer,
+                        tonalElevation = 2.dp
+                    ) {
+                        Text(
+                            text = reply.shortText,
+                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSecondaryContainer,
+                            maxLines = 1
+                        )
+                    }
                 }
             }
         }
@@ -762,6 +796,7 @@ fun AdvisorTabContent(viewModel: MainViewModel) {
         }
     }
 }
+
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
