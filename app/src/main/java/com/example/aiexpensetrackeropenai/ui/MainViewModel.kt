@@ -497,46 +497,56 @@ class MainViewModel(
                 val currentCal = Calendar.getInstance()
                 val currentMonthVal = currentCal.get(Calendar.MONTH) + 1
                 val currentYearVal = currentCal.get(Calendar.YEAR)
-                var targetMonthVal = currentMonthVal
-                var targetYearVal = currentYearVal
-                
+
                 val lowercaseQ = question.lowercase()
-                if (lowercaseQ.contains("tháng trước") || lowercaseQ.contains("tháng rồi")) {
-                    targetMonthVal -= 1
-                } else {
-                    val monthRegex = Regex("tháng (\\d{1,2})")
-                    val match = monthRegex.find(lowercaseQ)
-                    if (match != null) {
-                        val parsedMonth = match.groupValues[1].toIntOrNull()
-                        if (parsedMonth != null && parsedMonth in 1..12) {
-                            targetMonthVal = parsedMonth
-                            if (targetMonthVal > currentMonthVal && targetMonthVal >= 10 && currentMonthVal <= 3) {
-                                targetYearVal -= 1
-                            }
-                        }
+                val targetMonths = linkedSetOf<Pair<Int, Int>>()
+
+                fun monthsAgo(n: Int): Pair<Int, Int> {
+                    val c = Calendar.getInstance()
+                    c.add(Calendar.MONTH, -n)
+                    return Pair(c.get(Calendar.MONTH) + 1, c.get(Calendar.YEAR))
+                }
+
+                Regex("(\\d+)\\s*tháng\\s+(gần đây|gần nhất|qua|vừa qua|vừa rồi)").findAll(lowercaseQ).forEach { m ->
+                    val n = m.groupValues[1].toIntOrNull() ?: 0
+                    if (n in 1..24) for (i in 0 until n) targetMonths.add(monthsAgo(i))
+                }
+
+                if (lowercaseQ.contains("tháng trước") || lowercaseQ.contains("tháng rồi") || lowercaseQ.contains("tháng vừa rồi")) {
+                    targetMonths.add(monthsAgo(1))
+                }
+
+                if (lowercaseQ.contains("tháng này") || lowercaseQ.contains("tháng hiện tại")) {
+                    targetMonths.add(Pair(currentMonthVal, currentYearVal))
+                }
+
+                Regex("tháng\\s+(\\d{1,2})").findAll(lowercaseQ).forEach { m ->
+                    val parsedMonth = m.groupValues[1].toIntOrNull()
+                    if (parsedMonth != null && parsedMonth in 1..12) {
+                        var y = currentYearVal
+                        if (parsedMonth > currentMonthVal && parsedMonth >= 10 && currentMonthVal <= 3) y -= 1
+                        targetMonths.add(Pair(parsedMonth, y))
                     }
                 }
-                
-                if (targetMonthVal <= 0) {
-                    targetMonthVal += 12
-                    targetYearVal -= 1
-                }
-                
-                val monthDiff = (currentYearVal - targetYearVal) * 12 + (currentMonthVal - targetMonthVal)
-                
-                val dataContext = if (monthDiff in 0..2) {
-                    val allExpenses = expenses.value
+
+                if (targetMonths.isEmpty()) targetMonths.add(Pair(currentMonthVal, currentYearVal))
+
+                val sortedTargets = targetMonths.sortedWith(compareBy({ it.second }, { it.first }))
+                val targetLabel = sortedTargets.joinToString(", ") { "${it.first}/${it.second}" }
+
+                val allExpenses = expenses.value
+                val df = java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault())
+                val dataContext = sortedTargets.joinToString(separator = "\n\n") { (m, y) ->
                     val filtered = allExpenses.filter {
                         val cal = Calendar.getInstance()
                         cal.timeInMillis = it.timestamp
-                        cal.get(Calendar.MONTH) + 1 == targetMonthVal && cal.get(Calendar.YEAR) == targetYearVal && it.type == "expense"
+                        cal.get(Calendar.MONTH) + 1 == m && cal.get(Calendar.YEAR) == y && it.type == "expense"
                     }
-                    if (filtered.isEmpty()) "Không có giao dịch nào trong tháng $targetMonthVal/$targetYearVal"
-                    else filtered.joinToString(separator = "\n") { 
-                        "- ${it.activity}: ${it.amount}đ (${it.category}, ${java.text.SimpleDateFormat("dd/MM/yyyy", java.util.Locale.getDefault()).format(java.util.Date(it.timestamp))})"
+                    val header = "== Tháng $m/$y =="
+                    if (filtered.isEmpty()) "$header\nKhông có giao dịch nào."
+                    else header + "\n" + filtered.joinToString(separator = "\n") {
+                        "- ${it.activity}: ${it.amount}đ (${it.category}, ${df.format(java.util.Date(it.timestamp))})"
                     }
-                } else {
-                    "Không có dữ liệu hợp lệ do nằm ngoài phạm vi 3 tháng."
                 }
                 
                 val systemPrompt = """
@@ -545,11 +555,9 @@ class MainViewModel(
                     1. Giọng văn: Trưởng thành, điềm đạm, lịch sự. BẮT BUỘC TUYỆT ĐỐI KHÔNG dùng từ "Dạ", "Thưa mẹ" ở đầu câu, KHÔNG lạm dụng từ "ạ" ở cuối câu. Không sến súa, máy móc. Đi thẳng vào số liệu (Ví dụ: "Con gửi mẹ thống kê chi tiêu...").
                     2. Cực kỳ ngắn gọn, tối đa 2 đến 3 câu ngắn.
                     3. KHÔNG SỬ DỤNG ký hiệu Markdown (dấu sao *, gạch -, thăng #). Chỉ dùng văn bản thuần, xuống dòng tự nhiên.
-                    4. Chỉ cho phép phân tích dữ liệu CHI TIÊU trong nội bộ TỪNG THÁNG RIÊNG LẺ. Mặc định là tháng hiện tại ($currentMonthVal/$currentYearVal) nếu không có yêu cầu khác.
-                    5. NẾU mẹ yêu cầu phân tích khoảng thời gian quá dài, hoặc gộp nhiều tháng, BẠN PHẢI TỪ CHỐI và trả lời ĐÚNG CÂU SAU (không thêm bớt):
-                    "Con hiện tại chỉ hỗ trợ mẹ tra cứu chi tiết dữ liệu trong phạm vi từng tháng (tối đa 3 tháng gần đây) để đảm bảo tính chính xác cao nhất."
-                    
-                    Dữ liệu chi tiêu của tháng $targetMonthVal/$targetYearVal đang được chọn:
+                    4. Mặc định phân tích tháng hiện tại ($currentMonthVal/$currentYearVal) nếu mẹ không chỉ định. Mẹ có thể hỏi nhiều tháng cùng lúc; dữ liệu của mỗi tháng được liệt kê thành các khối "== Tháng X/Y ==" bên dưới — hãy so sánh/tổng hợp khi cần.
+
+                    Dữ liệu chi tiêu các tháng được chọn ($targetLabel):
                     $dataContext
                 """.trimIndent()
 
