@@ -1,6 +1,7 @@
 package com.example.aiexpensetrackeropenai.di
 
 import android.content.Context
+import com.example.aiexpensetrackeropenai.BuildConfig
 import com.example.aiexpensetrackeropenai.data.local.AppDatabase
 import com.example.aiexpensetrackeropenai.data.local.SettingsManager
 import com.example.aiexpensetrackeropenai.data.network.OpenAIApi
@@ -8,6 +9,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 
 interface AppContainer {
     val database: AppDatabase
@@ -26,9 +28,12 @@ class DefaultAppContainer(private val context: Context) : AppContainer {
 
     private val retrofit: Retrofit by lazy {
         val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            level = if (BuildConfig.DEBUG) HttpLoggingInterceptor.Level.BODY else HttpLoggingInterceptor.Level.NONE
         }
         val client = OkHttpClient.Builder()
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
             .addInterceptor(logging)
             .build()
 

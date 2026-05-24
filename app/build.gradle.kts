@@ -14,21 +14,25 @@ android {
 
     defaultConfig {
         applicationId = "com.example.aiexpensetrackeropenai"
-        minSdk = 26
+        minSdk = 29
         targetSdk = 36
-        versionCode = 1
-        versionName = "v1.0"
+        versionCode = 5
+        versionName = "1.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
+        }
+        debug {
+            isMinifyEnabled = false
         }
     }
     compileOptions {
@@ -37,6 +41,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

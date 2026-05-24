@@ -12,6 +12,13 @@ interface OpenAIApi {
         @Body request: ChatRequest
     ): ChatResponse
 
+    @POST("v1/chat/completions")
+    suspend fun parseReceiptImage(
+        @Header("Authorization") authHeader: String,
+        @Header("Content-Type") contentType: String = "application/json",
+        @Body request: ImageChatRequest
+    ): ChatResponse
+
     @retrofit2.http.Multipart
     @POST("v1/audio/transcriptions")
     suspend fun transcribeAudio(
@@ -21,4 +28,11 @@ interface OpenAIApi {
         @retrofit2.http.Part("language") language: okhttp3.RequestBody,
         @retrofit2.http.Part("prompt") prompt: okhttp3.RequestBody
     ): TranscriptionResponse
+
+    @POST("v1/audio/speech")
+    suspend fun generateSpeech(
+        @Header("Authorization") authHeader: String,
+        @Header("Content-Type") contentType: String = "application/json",
+        @Body request: SpeechRequest
+    ): okhttp3.ResponseBody
 }

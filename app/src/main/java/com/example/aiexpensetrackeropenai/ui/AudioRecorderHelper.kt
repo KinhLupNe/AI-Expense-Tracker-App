@@ -13,7 +13,7 @@ class AudioRecorderHelper(private val context: Context) {
 
     fun startRecording() {
         val cacheDir = context.cacheDir
-        audioFile = File(cacheDir, "audio_input.m4a")
+        audioFile = File(cacheDir, "audio_input.ogg")
 
         recorder = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             MediaRecorder(context)
@@ -22,10 +22,10 @@ class AudioRecorderHelper(private val context: Context) {
             MediaRecorder()
         }.apply {
             setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION)
-            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            setMaxDuration(10000) // 10s max duration limit
-            setMaxFileSize(1000000) // 1MB max file size limit
+            setOutputFormat(MediaRecorder.OutputFormat.OGG)
+            setAudioEncoder(MediaRecorder.AudioEncoder.OPUS)
+            setMaxDuration(20000) // 20s max duration limit
+            setMaxFileSize(2000000) // 2MB max file size limit
             setOutputFile(audioFile?.absolutePath)
             
             prepare()

@@ -6,6 +6,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 
 private val Context.dataStore by preferencesDataStore(name = "settings")
 
@@ -14,10 +15,20 @@ class SettingsManager(private val context: Context) {
         val API_KEY = stringPreferencesKey("openai_api_key")
         val WEBHOOK_URL = stringPreferencesKey("google_sheets_webhook_url")
         val SHEET_URL = stringPreferencesKey("google_sheet_url")
+        val AUTO_READ_TTS = androidx.datastore.preferences.core.booleanPreferencesKey("auto_read_tts")
+        val TTS_VOICE = stringPreferencesKey("tts_voice")
     }
 
     val apiKeyFlow: Flow<String?> = context.dataStore.data.map { preferences ->
         preferences[API_KEY] ?: ""
+    }
+    
+    val autoReadTtsFlow: Flow<Boolean> = context.dataStore.data.map { preferences ->
+        preferences[AUTO_READ_TTS] ?: true // Mặc định bật
+    }
+
+    val ttsVoiceFlow: Flow<String> = context.dataStore.data.map { preferences ->
+        preferences[TTS_VOICE] ?: "alloy"
     }
 
     val webhookUrlFlow: Flow<String?> = kotlinx.coroutines.flow.flowOf(
@@ -31,6 +42,20 @@ class SettingsManager(private val context: Context) {
     suspend fun saveApiKey(apiKey: String) {
         context.dataStore.edit { preferences ->
             preferences[API_KEY] = apiKey
+        }
+    }
+    
+    suspend fun saveAutoReadTts(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[AUTO_READ_TTS] = enabled
+        }
+    }
+
+    fun saveTtsVoice(voice: String) {
+        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            context.dataStore.edit { preferences ->
+                preferences[TTS_VOICE] = voice
+            }
         }
     }
 
